@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>متابعة المشروع | AutoDev Agency</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#00d4ff" />
+  <link rel="icon" href="assets/logo-transparent.png" type="image/png" />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #060d1a;
+      --card: #0d1526;
+      --border: rgba(255,255,255,.1);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --cyan: #00d4ff;
+      --ok: #22c55e;
+      --warn: #eab308;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Cairo, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 28px 18px 60px; }
+    .top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 28px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+    .brand img { width: 40px; height: 40px; object-fit: contain; }
+    .brand strong { font-size: 1.1rem; }
+    .brand span { color: var(--cyan); }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 1.35rem; margin-bottom: 6px; }
+    .sub { color: var(--muted); font-size: .9rem; margin-bottom: 18px; }
+    .badge {
+      display: inline-block; padding: 4px 12px; border-radius: 999px;
+      font-size: .78rem; font-weight: 700;
+      background: rgba(0,212,255,.12); color: var(--cyan);
+    }
+    .badge.done { background: rgba(34,197,94,.15); color: var(--ok); }
+    .badge.progress { background: rgba(234,179,8,.15); color: var(--warn); }
+    .row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: .92rem; }
+    .row:last-child { border-bottom: none; }
+    .row span:first-child { color: var(--muted); }
+    .bar {
+      height: 10px; background: rgba(255,255,255,.08); border-radius: 999px; overflow: hidden; margin: 12px 0 6px;
+    }
+    .bar > i {
+      display: block; height: 100%; width: 0;
+      background: linear-gradient(90deg, #00d4ff, #0ea5e9);
+      border-radius: 999px; transition: width .4s ease;
+    }
+    .milestones { list-style: none; margin-top: 8px; }
+    .milestones li {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 0; border-bottom: 1px solid var(--border); font-size: .9rem;
+    }
+    .milestones li:last-child { border-bottom: none; }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0;
+      background: var(--muted);
+    }
+    .dot.done { background: var(--ok); }
+    .dot.current { background: var(--cyan); box-shadow: 0 0 0 4px rgba(0,212,255,.2); }
+    .error, .empty {
+      text-align: center; padding: 48px 20px; color: var(--muted);
+    }
+    .error h2, .empty h2 { color: var(--text); margin-bottom: 8px; }
+    .note { font-size: .8rem; color: var(--muted); margin-top: 20px; text-align: center; }
+    a.home {
+      color: var(--cyan); text-decoration: none; font-size: .85rem; font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <a class="brand" href="index.html">
+        <img src="assets/logo-transparent.png" alt="AutoDev" />
+        <strong>Auto<span>Dev</span></strong>
+      </a>
+      <a class="home" href="index.html">الموقع الرئيسي</a>
+    </div>
+    <div id="app"><div class="empty"><h2>جاري التحميل…</h2></div></div>
+    <p class="note">رابط المتابعة خاص بمشروعك — لا تشاركه إلا مع المعنيين.</p>
+  </div>
+  <script>
+    (function () {
+      var PREFIX = "autodev_admin_";
+      var params = new URLSearchParams(location.search);
+      var token = params.get("t") || params.get("token") || "";
+      var app = document.getElementById("app");
+
+      function loadProjects() {
+        try {
+          var raw = localStorage.getItem(PREFIX + "projects");
+          if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        try {
+          var pub = localStorage.getItem("autodev_public_projects");
+          if (pub) return JSON.parse(pub);
+        } catch (e) {}
+        return [];
+      }
+
+      function statusLabel(s) {
+        var map = {
+          draft: "مسودة",
+          in_progress: "قيد التنفيذ",
+          completed: "مكتمل",
+          archived: "مؤرشف",
+          active: "نشط",
+        };
+        return map[s] || s || "—";
+      }
+
+      function badgeClass(s) {
+        if (s === "completed") return "done";
+        if (s === "in_progress" || s === "active") return "progress";
+        return "";
+      }
+
+      function render() {
+        if (!token) {
+          app.innerHTML = '<div class="error"><h2>رابط غير صالح</h2><p>لا يوجد رمز متابعة في الرابط.</p></div>';
+          return;
+        }
+        var projects = loadProjects();
+        var p = projects.find(function (x) {
+          return x.public_token === token || x.track_token === token;
+        });
+        if (p && p.tracking_enabled === false) {
+          app.innerHTML = '<div class="error"><h2>المتابعة غير مفعّلة</h2><p>هذا المشروع لا يتيح رابط المتابعة حالياً.</p></div>';
+          return;
+        }
+        if (!p) {
+          app.innerHTML = '<div class="error"><h2>المشروع غير متاح</h2><p>تأكد من الرابط أو أن المشروع نُشر من لوحة التحكم على نفس المتصفح/الجهاز حتى يتم الربط بالخادم لاحقاً.</p></div>';
+          return;
+        }
+        var progress = typeof p.progress === "number" ? p.progress : (p.status === "completed" ? 100 : p.status === "in_progress" ? 45 : 10);
+        progress = Math.max(0, Math.min(100, progress));
+        var title = (p.title && (p.title.ar || p.title.en || p.title.fr)) || p.name || "مشروع";
+        var desc = (p.short_description && (p.short_description.ar || p.short_description.en)) || "";
+        var milestones = p.milestones || [
+          { title: "بدء المشروع", done: progress >= 15 },
+          { title: "التصميم", done: progress >= 40 },
+          { title: "التطوير", done: progress >= 70 },
+          { title: "التسليم", done: progress >= 100 },
+        ];
+        var html = "";
+        html += '<div class="card">';
+        html += '<span class="badge ' + badgeClass(p.status) + '">' + statusLabel(p.status) + "</span>";
+        html += "<h1 style='margin-top:12px'>" + escapeHtml(title) + "</h1>";
+        if (desc) html += '<p class="sub">' + escapeHtml(desc) + "</p>";
+        html += '<div class="bar"><i style="width:' + progress + '%"></i></div>';
+        html += '<div style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted)"><span>التقدم</span><span>' + progress + "%</span></div>";
+        html += "</div>";
+        html += '<div class="card"><h2 style="font-size:1rem;margin-bottom:8px">تفاصيل</h2>';
+        html += '<div class="row"><span>السنة</span><span>' + escapeHtml(p.year || "—") + "</span></div>";
+        html += '<div class="row"><span>الحالة</span><span>' + statusLabel(p.status) + "</span></div>";
+        if (p.updated_at) html += '<div class="row"><span>آخر تحديث</span><span>' + escapeHtml(String(p.updated_at).slice(0, 10)) + "</span></div>";
+        html += "</div>";
+        html += '<div class="card"><h2 style="font-size:1rem;margin-bottom:8px">مراحل العمل</h2><ul class="milestones">';
+        milestones.forEach(function (m, i) {
+          var done = !!m.done;
+          var current = !done && milestones.slice(0, i).every(function (x) { return x.done; });
+          var cls = done ? "done" : current ? "current" : "";
+          html += '<li><span class="dot ' + cls + '"></span><div><strong>' + escapeHtml(m.title || m.name || "مرحلة") + "</strong>";
+          if (m.note) html += '<div style="color:var(--muted);font-size:.85rem">' + escapeHtml(m.note) + "</div>";
+          html += "</div></li>";
+        });
+        html += "</ul></div>";
+        app.innerHTML = html;
+      }
+
+      function escapeHtml(s) {
+        return String(s || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      render();
+    })();
+  </script>
+</body>
+</html>
