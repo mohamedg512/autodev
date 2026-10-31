@@ -11,6 +11,13 @@
   const db = window.supabase.createClient(URL, KEY);
   const lang = () => { const x=localStorage.getItem("autodev-lang")||document.documentElement.lang||"ar"; return ["ar","fr","en"].includes(x)?x:"ar"; };
   const pick = v => v==null?"":(typeof v==="object"?String(v[lang()]??v.ar??v.en??v.fr??""):String(v));
+  const localized = (row, key) => {
+    if (!row) return "";
+    const L = lang();
+    const value = row[key];
+    if (value && typeof value === "object") return pick(value);
+    return String(row[key + "_" + L] ?? row[key + "_ar"] ?? row[key + "_en"] ?? row[key + "_fr"] ?? value ?? "");
+  };
   const esc = v => String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   let liveSettings = {};
   async function get(table, configure) {
@@ -69,10 +76,10 @@
     if(at&&ae)ae.textContent=pick(at); if(ad&&de)de.textContent=pick(ad);
     ["terms","privacy","cookies"].forEach(k=>{const v=l[k+"_"+L]||l[k];if(v)document.querySelectorAll(`[data-legal-body="${k}"],#legal${k[0].toUpperCase()+k.slice(1)}Body,.legal-body-${k}`).forEach(el=>el.textContent=pick(v));});
   }
-  function renderProjects(items){const grid=document.getElementById("projectsGrid");if(!grid)return;const list=items.filter(p=>p.is_visible!==false);grid.innerHTML=list.map(p=>{const title=pick(p.title),img=p.image||p.cover_image_url||"",tech=Array.isArray(p.tech)?p.tech:(Array.isArray(p.technologies)?p.technologies:[]);return `<article class="project-card" data-category="${esc(p.category||"")}" data-title="${esc(title)}" data-img="${esc(img)}" data-portfolio="portfolio/index.html" role="button" tabindex="0"><div class="project-img"><span class="project-tag">${esc(p.tag||"")}</span>${img?`<img src="${esc(img)}" alt="${esc(title)}" loading="lazy">`:""}</div><div class="project-body"><h3>${esc(title)}</h3><p>${esc(pick(p.description||p.short_description))}</p><div class="project-tech">${tech.map(t=>`<span>${esc(typeof t==="string"?t:t.name||"")}</span>`).join("")}</div></div></article>`;}).join("");if(typeof initProjectPreview==="function")initProjectPreview();}
+  function renderProjects(items){const grid=document.getElementById("projectsGrid");if(!grid)return;const list=items.filter(p=>p.is_visible!==false).sort((a,b)=>(Number(a.sort_order)||0)-(Number(b.sort_order)||0));grid.innerHTML=list.map(p=>{const title=pick(p.title),img=p.image||p.cover_image_url||"",tech=Array.isArray(p.tech)?p.tech:(Array.isArray(p.technologies)?p.technologies:[]);return `<article class="project-card" data-category="${esc(p.category||"")}" data-title="${esc(title)}" data-img="${esc(img)}" data-portfolio="portfolio/index.html" role="button" tabindex="0"><div class="project-img"><span class="project-tag">${esc(p.tag||"")}</span>${img?`<img src="${esc(img)}" alt="${esc(title)}" loading="lazy">`:""}</div><div class="project-body"><h3>${esc(title)}</h3><p>${esc(pick(p.description||p.short_description))}</p><div class="project-tech">${tech.map(t=>`<span>${esc(typeof t==="string"?t:t.name||"")}</span>`).join("")}</div></div></article>`;}).join("");if(typeof initProjectPreview==="function")initProjectPreview();}
   function renderServices(items){const g=document.querySelector("#services .services-grid");if(!g)return;g.innerHTML=items.filter(x=>x.is_visible!==false).map(s=>`<article class="service-card"><div class="service-icon">${esc(s.icon||"✦")}</div><h3>${esc(pick(s.title))}</h3><p>${esc(pick(s.short_description))}</p></article>`).join("");}
-  function renderTestimonials(items){const g=document.getElementById("testimonialsGrid");if(!g)return;g.innerHTML=items.filter(x=>x.is_visible!==false).map(t=>{const n=pick(t.name),r=pick(t.role),c=pick(t.content),stars="★".repeat(Math.max(1,Math.min(5,Number(t.rating)||5)));const av=t.avatar?`<img src="${esc(t.avatar)}" alt="">`:esc(n.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join(""));return `<article class="testimonial-card"><div class="testimonial-stars">${stars}</div><p class="testimonial-text">"${esc(c)}"</p><div class="testimonial-author"><div class="testimonial-avatar">${av}</div><div><strong>${esc(n)}</strong><span>${esc(r)}</span></div></div></article>`;}).join("");}
-  function renderFaqs(items){const g=document.getElementById("faqList");if(!g)return;g.innerHTML=items.filter(x=>x.is_visible!==false).map(f=>`<div class="faq-item"><button class="faq-q" type="button"><span>${esc(pick(f.question))}</span><span aria-hidden="true">＋</span></button><div class="faq-a"><p>${esc(pick(f.answer))}</p></div></div>`).join("");g.querySelectorAll(".faq-q").forEach(b=>b.addEventListener("click",()=>b.parentElement.classList.toggle("active")));}
+  function renderTestimonials(items){const g=document.getElementById("testimonialsGrid");if(!g)return;g.innerHTML=items.filter(x=>x.is_visible!==false).map(t=>{const n=localized(t,"name"),r=localized(t,"role"),c=localized(t,"content")||localized(t,"review")||localized(t,"text"),stars="★".repeat(Math.max(1,Math.min(5,Number(t.rating)||5)));const av=t.avatar?`<img src="${esc(t.avatar)}" alt="">`:esc(n.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join(""));return `<article class="testimonial-card"><div class="testimonial-stars">${stars}</div><p class="testimonial-text">"${esc(c)}"</p><div class="testimonial-author"><div class="testimonial-avatar">${av}</div><div><strong>${esc(n)}</strong><span>${esc(r)}</span></div></div></article>`;}).join("");}
+  function renderFaqs(items){const g=document.getElementById("faqList");if(!g)return;g.innerHTML=items.filter(x=>x.is_visible!==false).map(f=>`<div class="faq-item"><button class="faq-q" type="button" aria-expanded="false"><span>${esc(localized(f,"question"))}</span><span aria-hidden="true">＋</span></button><div class="faq-a"><p>${esc(localized(f,"answer"))}</p></div></div>`).join("");g.querySelectorAll(".faq-q").forEach(b=>b.addEventListener("click",()=>{const item=b.parentElement;const open=!item.classList.contains("open");g.querySelectorAll(".faq-item").forEach(i=>{i.classList.remove("open");i.querySelector(".faq-q")?.setAttribute("aria-expanded","false");});item.classList.toggle("open",open);b.setAttribute("aria-expanded",String(open));}));}
   async function submitRequest(payload){
     const row={name:String(payload.name||"").trim(),company:String(payload.company||""),email:String(payload.email||"").trim(),phone:String(payload.phone||""),service:String(payload.service||""),budget:String(payload.budget||""),timeline:String(payload.timeline||""),description:String(payload.description||payload.desc||""),channel:String(payload.channel||"form"),status:"new",priority:"medium"};
     if(!row.name||!row.email)throw new Error("الاسم والبريد الإلكتروني مطلوبان");
@@ -86,18 +93,26 @@
   }
   async function load(){
     document.documentElement.dataset.supabaseStatus="loading";
-    const [site,projects,services,testimonials,faqs,settings]=await Promise.all([
-      get("site_content",q=>q.eq("id",1).limit(1)),get("portfolio_projects",q=>q.eq("is_visible",true).order("sort_order")),get("services",q=>q.eq("is_visible",true).order("sort_order")),get("testimonials",q=>q.eq("is_visible",true).order("sort_order")),get("faq_items",q=>q.eq("is_visible",true).order("sort_order")),get("settings",q=>q.eq("id",1).limit(1))
+    const [site,homeProjects,portfolioProjects,services,testimonials,faqs,settings]=await Promise.all([
+      get("site_content",q=>q.eq("id",1).limit(1)),
+      get("home_projects",q=>q.eq("is_visible",true).order("sort_order")),
+      get("portfolio_projects",q=>q.eq("is_visible",true).order("sort_order")),
+      get("services",q=>q.eq("is_visible",true).order("sort_order")),
+      get("testimonials",q=>q.eq("is_visible",true).order("sort_order")),
+      get("faq_items",q=>q.eq("is_visible",true).order("sort_order")),
+      get("public_site_settings",q=>q.eq("id",1).limit(1))
     ]);
     if(site!==null&&site[0])applyContent(site[0]);
     // A successful empty result intentionally removes hard-coded sample content.
-    if(projects!==null)renderProjects(projects); else renderProjects([]);
+    if(homeProjects!==null && homeProjects.length)renderProjects(homeProjects);
+    else if(portfolioProjects!==null)renderProjects(portfolioProjects);
+    else renderProjects([]);
     if(services!==null)renderServices(services); else renderServices([]);
     if(testimonials!==null)renderTestimonials(testimonials); else renderTestimonials([]);
     if(faqs!==null)renderFaqs(faqs); else renderFaqs([]);
     if(settings!==null)applySettings(settings[0]||{});
     bindContact();
-    document.documentElement.dataset.supabaseStatus=[projects,services,testimonials,faqs,settings].some(x=>x===null)?"partial-error":"connected";
+    document.documentElement.dataset.supabaseStatus=[site,homeProjects,portfolioProjects,services,testimonials,faqs,settings].some(x=>x===null)?"partial-error":"connected";
     document.dispatchEvent(new CustomEvent("autodev:supabase-loaded",{detail:{status:document.documentElement.dataset.supabaseStatus}}));
   }
   document.addEventListener("autodev:lang",()=>load().catch(console.error));
@@ -118,6 +133,7 @@
     const liveChannel=db.channel("autodev-public-site-live")
       .on("postgres_changes",{event:"*",schema:"public",table:"settings"},()=>scheduleRefresh("settings"))
       .on("postgres_changes",{event:"*",schema:"public",table:"site_content"},()=>scheduleRefresh("site_content"))
+      .on("postgres_changes",{event:"*",schema:"public",table:"home_projects"},()=>scheduleRefresh("home_projects"))
       .on("postgres_changes",{event:"*",schema:"public",table:"portfolio_projects"},()=>scheduleRefresh("portfolio_projects"))
       .on("postgres_changes",{event:"*",schema:"public",table:"services"},()=>scheduleRefresh("services"))
       .on("postgres_changes",{event:"*",schema:"public",table:"testimonials"},()=>scheduleRefresh("testimonials"))
